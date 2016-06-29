@@ -50,9 +50,11 @@ public class AggregateReportGui extends AbstractGraphPanelVisualizer {
     private static final String[] COLUMNS = {
         "sampler_label",
         "aggregate_report_count",
-        "average",
+        "aggregate_report_average",
         "aggregate_report_median",
         "aggregate_report_90%_line",
+        "aggregate_report_95%_line",
+        "aggregate_report_99%_line",
         "aggregate_report_min",
         "aggregate_report_max",
         "aggregate_report_error%",
@@ -81,17 +83,18 @@ public class AggregateReportGui extends AbstractGraphPanelVisualizer {
                     new Functor("getCount"),
                     new Functor("getMeanAsNumber"),
                     new Functor("getMedian"),
-                    new Functor("getPercentPoint",
-                    new Object[]{new Float(.900)}),
+                    new Functor("getPercentPoint", new Object[]{new Float(.900)}),
+                    new Functor("getPercentPoint", new Object[]{new Float(.950)}),
+                    new Functor("getPercentPoint", new Object[]{new Float(.990)}),
                     new Functor("getMin"),
                     new Functor("getMax"),
                     new Functor("getErrorPercentage"),
                     new Functor("getRate"),
                     new Functor("getKBPerSecond"),
                     new Functor("getStandardDeviation"),},
-                new Functor[]{null, null, null, null, null, null, null, null, null, null, null},
-                new Class[]{String.class, Long.class, Long.class, Long.class, Long.class,
-                    Long.class, Long.class, String.class, String.class, String.class, String.class});
+                new Functor[]{null, null, null, null, null, null, null, null, null, null, null, null, null},
+                new Class[]{String.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class,
+                        Long.class, Long.class, String.class, String.class, String.class, String.class});
         clearData();
         init();
     }
@@ -109,12 +112,14 @@ public class AggregateReportGui extends AbstractGraphPanelVisualizer {
             null, // Mean
             null, // median
             null, // 90%
+            null, // 95%
+            null, // 99%
             null, // Min
             null, // Max
-            new NumberRenderer("#0.00%"), // Error %age
-            new RateRenderer("#.0"), // Throughput
-            new NumberRenderer("#.0"), // pageSize
-            new NumberRenderer("#0.00"), // Std Dev.
+            new NumberRenderer("#0.00%"),   // Error %age
+            new RateRenderer("#.0"),        // Throughput
+            new NumberRenderer("#.0"),      // pageSize
+            new NumberRenderer("#0.00"),    // Std Dev.
         };
 
     // Column formats
@@ -125,12 +130,14 @@ public class AggregateReportGui extends AbstractGraphPanelVisualizer {
             null, // Mean
             null, // median
             null, // 90%
+            null, // 95%
+            null, // 99%
             null, // Min
             null, // Max
-            new DecimalFormat("#0.00%"), // Error %age
-            new DecimalFormat("#.0"), // Throughput
-            new DecimalFormat("#.0"), // pageSize
-            new DecimalFormat("#0.00"), // Std Dev.
+            new DecimalFormat("#0.00%"),    // Error %age
+            new DecimalFormat("#.0"),       // Throughput
+            new DecimalFormat("#.0"),       // pageSize
+            new DecimalFormat("#0.00"),     // Std Dev.
         };
 
     @Override
@@ -155,7 +162,7 @@ public class AggregateReportGui extends AbstractGraphPanelVisualizer {
             }
         }
         /*
-         * Synch is needed because multiple threads can update the counts.
+         * Sync is needed because multiple threads can update the counts.
          */
         synchronized (row) {
             row.addSample(res);
