@@ -13,9 +13,12 @@ import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.IOException;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
-public class PluginManagerDialog extends JDialog implements ActionListener {
+public class PluginManagerDialog extends JDialog implements ActionListener, ComponentListener {
     private static final Logger log = LoggingManager.getLoggerForClass();
     public static final Border SPACING = BorderFactory.createEmptyBorder(5, 5, 5, 5);
     private final PluginManager manager;
@@ -24,12 +27,15 @@ public class PluginManagerDialog extends JDialog implements ActionListener {
     private final PluginsList installed;
     private final PluginsList available;
     private final PluginUpgradesList upgrades;
+    private final JSplitPane topAndDown = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
     private JLabel statusLabel = new JLabel("");
+    private JTextArea failureLabel = new JTextArea();
 
 
     public PluginManagerDialog(PluginManager aManager) {
         super((JFrame) null, "JMeter Plugins Manager", true);
         setLayout(new BorderLayout());
+        addComponentListener(this);
         manager = aManager;
         Dimension size = new Dimension(1024, 768);
         setSize(size);
@@ -37,11 +43,9 @@ public class PluginManagerDialog extends JDialog implements ActionListener {
         setIconImage(PluginManagerMenuItem.getPluginsIcon().getImage());
         ComponentUtil.centerComponentInWindow(this);
 
-        try {
-            manager.load();
-        } catch (IOException e) {
-            log.error("Failed to load plugins manager", e);
-        }
+        failureLabel.setForeground(Color.RED);
+        failureLabel.setEditable(false);
+        add(failureLabel, BorderLayout.NORTH);
 
         final GenericCallback<Object> statusRefresh = new GenericCallback<Object>() {
             @Override
@@ -80,12 +84,10 @@ public class PluginManagerDialog extends JDialog implements ActionListener {
             }
         };
 
-
         installed = new PluginsList(manager.getInstalledPlugins(), cbNotifier, statusRefresh);
         available = new PluginsList(manager.getAvailablePlugins(), cbNotifier, statusRefresh);
         upgrades = new PluginUpgradesList(manager.getUpgradablePlugins(), cbUpgradeNotifier, statusRefresh);
 
-        JSplitPane topAndDown = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         topAndDown.setResizeWeight(.75);
         topAndDown.setDividerSize(5);
         topAndDown.setTopComponent(getTabsPanel());
@@ -156,5 +158,36 @@ public class PluginManagerDialog extends JDialog implements ActionListener {
                 }
             }
         }.start();
+    }
+
+    @Override
+    public void componentResized(ComponentEvent e) {
+
+    }
+
+    @Override
+    public void componentMoved(ComponentEvent e) {
+
+    }
+
+    @Override
+    public void componentShown(ComponentEvent evt) {
+        try {
+            manager.load();
+        } catch (Throwable e) {
+            log.error("Failed to load plugins manager", e);
+            ByteArrayOutputStream text = new ByteArrayOutputStream(4096);
+            e.printStackTrace(new PrintStream(text));
+            failureLabel.setText(text.toString());
+        }
+
+        topAndDown.setVisible(!manager.allPlugins.isEmpty());
+        failureLabel.setVisible(manager.allPlugins.isEmpty());
+        pack();
+    }
+
+    @Override
+    public void componentHidden(ComponentEvent e) {
+
     }
 }

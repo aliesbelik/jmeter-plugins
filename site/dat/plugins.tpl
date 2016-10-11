@@ -16,6 +16,12 @@
     {/if} :: JMeter-Plugins.org
   </title>
 
+<script>
+if (window.location.hostname == 'jmeter-plugins.org' && window.location.protocol != "https:") {
+    window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+}
+</script>
+
   <link rel="icon" href="/img/site/logo.png"/>
   <!-- Bootstrap -->
 
@@ -133,6 +139,10 @@
             {/if}
           {/foreach}
         </ul>
+<div class="pull-right" style="vertical-align: middle; padding-right: 0.75em; padding-top: 0.15em">
+<!-- Place this tag where you want the button to render. -->
+<a class="github-button" href="https://github.com/undera/jmeter-plugins" data-count-href="/undera/jmeter-plugins/stargazers" data-count-api="/repos/undera/jmeter-plugins#stargazers_count" data-count-aria-label="# stargazers on GitHub" aria-label="Star undera/jmeter-plugins on GitHub">Star</a>
+</div>
       </nav>
     {/if}
   </div>
@@ -146,13 +156,15 @@
 
 <footer>
   <div class="container">
-    <span>&copy; 2009-{"Y"|date} Andrey Pokhilko and <a href="/wiki/Contributors/">project contributors</a></span><br/>
+    <span>&copy; 2009-{"Y"|date} <a href="https://www.linkedin.com/in/andreypohilko">Andrey Pokhilko</a> and <a href="/wiki/Contributors/">project contributors</a></span><br/>
     <span>Licensed under <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a></span>
   </div>
 
   <!-- Latest compiled and minified JavaScript -->
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
 
+<!-- Place this tag in your head or just before your close body tag. -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
   {include file="dat/counter.tpl"}
 
 </footer>
