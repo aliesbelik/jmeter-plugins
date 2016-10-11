@@ -47,7 +47,7 @@ public class AggregateReportGui extends AbstractGraphPanelVisualizer {
     private static final String[] COLUMNS = {
         "sampler_label",
         "aggregate_report_count",
-        "aggregate_report_average",
+        "average",
         "aggregate_report_median",
         "aggregate_report_90%_line",
         "aggregate_report_95%_line",
@@ -89,9 +89,7 @@ public class AggregateReportGui extends AbstractGraphPanelVisualizer {
                     new Functor("getRate"),
                     new Functor("getKBPerSecond"),
                     new Functor("getStandardDeviation"),},
-                new Functor[]{null, null, null, null, null, null, null, null, null, null, null, null, null},
-                new Class[]{String.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class,
-                        Long.class, Long.class, String.class, String.class, String.class, String.class});
+                    Long.class, Long.class, String.class, String.class, String.class, String.class});
         clearData();
         init();
     }

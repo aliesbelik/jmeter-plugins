@@ -29,9 +29,22 @@ Sometimes plugins have dependencies from each other, so there might be additiona
 
 Right mouse click over checkbox lists opens "Toggle All" option, which takes some time to toggle all items in the list.
 
-Plugins Manager respects JMeter's [http://jmeter.apache.org/usermanual/get-started.html#proxy_server proxy settings].
+== Using Behind the Proxy ==
 
-== Add Your Favorite Plugin ==
+Plugins Manager respects JMeter's [http://jmeter.apache.org/usermanual/get-started.html#proxy_server proxy settings]. However, to avoid editing the properties files, we recommend to launch JMeter with additional parameters to pass it the proxy settings:
+
+{{{
+JVM_ARGS="-Dhttps.proxyHost=myproxy.com -Dhttps.proxyPort=8080" jmeter\bin\jmeter.bat
+}}}
+
+If you need proxy username/password, specify them with two additional properties {{{http.proxyUser}}} and {{{http.proxyPass}}} like this:
+
+{{{
+JVM_ARGS="-Dhttps.proxyHost=myproxy.com -Dhttps.proxyPort=8080 -Dhttp.proxyUser=john -Dhttp.proxyPass=***" jmeter\bin\jmeter.bat
+}}}
+
+
+== Add Your Plugin ==
 
 Now there is an opportunity for anyone who creates the JMeter plugins to quickly make them available for wide audience of JMeter-Plugins.org.
 You don't need to contribute your source code into our repository, you can just create your project and maintain it, just using JPGC as distribution infrastructure.
@@ -42,8 +55,9 @@ Main goal is not to ship undesired plugins into popup menus to not distract JMet
 
 == Usage Statistics Collected ==
 
-By default, Plugins Manager sends some anonymous information to JMeter-Plugins.org, including: full version of JMeter used, list of installed plugins with their versions, unique ID for the installation.
-We would love to analyze that information to learn more about which plugins deserve more development according to their popularity. Also, we plan to publish some interesting stats from that information in the future.
+By default, Plugins Manager sends some anonymous information to JMeter-Plugins.org, including: full version of JMeter used,
+list of installed plugins with their versions, unique ID for the installation.
+We analyze that information to learn more about which plugins deserve more development according to their popularity. Also, we share the statistics derived from usage reports on [/stats/ statistics page].
 The information is completely anonymous, you can validate that through our source code. You are free to disable these reporting by setting {{{jpgc.repo.sendstats=false}}} in JMeter properties.
 
 
@@ -52,7 +66,7 @@ The information is completely anonymous, you can validate that through our sourc
 If you want to use the Plugins Manager in an automated fashion, you will need to make some preparations first:
  
   # make sure {{{cmdrunner-2.0.jar}}} is present in {{{jmeter/lib}}} directory. If not, take it from here: http://search.maven.org/remotecontent?filepath=kg/apc/cmdrunner/2.0/cmdrunner-2.0.jar
-  # make sure {{{PluginsManagerCMD.sh}}} or {{{PluginsManagerCMD.bat}}} is present in {{{jmeter/bin}}} directory. If not, run {{{java -cp jmeter/lib/ext/jmeter-plugins-manager-0.8.jar org.jmeterplugins.repository.PluginManagerCMDInstaller}}} to have the files created
+  # make sure {{{PluginsManagerCMD.sh}}} or {{{PluginsManagerCMD.bat}}} is present in {{{jmeter/bin}}} directory. If not, run {{{java -cp jmeter/lib/ext/jmeter-plugins-manager-0.9.jar org.jmeterplugins.repository.PluginManagerCMDInstaller}}} to have the files created
     
 Now, you can use {{{PluginsManagerCMD}}} to get the status of plugins, install or uninstall them. The command-line is simple:
 
@@ -75,7 +89,12 @@ PluginsManagerCMD uninstall jmeter-tcp,jmeter-ftp,jmeter-jdbc
 To use proxy with command line, please use {{{JVM_ARGS}}} environment variable to set proxy properties, like this:
 
 {{{
-JVM_ARGS="-Dhttp.proxyHost=myproxy.com -Dhttp.proxyPort=8080" PluginsManagerCMD status
+JVM_ARGS="-Dhttps.proxyHost=myproxy.com -Dhttps.proxyPort=8080" PluginsManagerCMD status
+}}}
+
+If you need username/proxy for proxy, pass them like this:
+{{{
+JVM_ARGS="-Dhttps.proxyHost=myproxy.com -Dhttps.proxyPort=8080 -Dhttp.proxyUser=john -Dhttp.proxyPass=***" PluginsManagerCMD status
 }}}
 
 == Using from BeanShell or JSR223 ==
@@ -102,9 +121,6 @@ org.jmeterplugins.repository.PluginManager.getAllPluginsStatus()
 
 Example result of this function call is string like {{{[jpgc-graphs-basic=1.3.1, jpgc-sense=1.3.1, jpgc-cmd=1.3.1, jpgc-graphs-composite=1.3.1, jmeter-core=2.13, jmeter-components=2.13]}}}.
 
+== Network Timeout ==
 
-
-To use proxy with command line, please use {{{JVM_ARGS}}} environment variable to set proxy properties, like this:
-{{{
-JVM_ARGS="-Dhttp.proxyHost=myproxy.com -Dhttp.proxyPort=8080" PluginsManagerCMD status
-}}}
+If you experiencing "Connection Timed Out" errors, try setting property in user.properties file: {{{jpgc.repo.timeout=60000}}}.

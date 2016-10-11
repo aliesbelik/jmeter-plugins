@@ -1,55 +1,46 @@
 package org.jmeterplugins.repository;
 
 
-import net.sf.json.*;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.params.ConnRoutePNames;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.CoreConnectionPNames;
-import org.apache.http.params.HttpParams;
+import net.sf.json.JSON;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+import org.apache.jmeter.engine.JMeterEngine;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.*;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.file.AccessDeniedException;
 import java.util.*;
 
 public class PluginManager {
     private static final Logger log = LoggingManager.getLoggerForClass();
-    private int timeout = 1000; // don't delay JMeter startup for more than 1 second
-    protected HttpClient httpClient = new DefaultHttpClient();
-    private final static String address = JMeterUtils.getPropDefault("jpgc.repo.address", System.getProperty("jpgc.repo.address", "http://jmeter-plugins.org"));
-    protected Map<Plugin, Boolean> allPlugins = new HashMap<>();
     private static PluginManager staticManager = new PluginManager();
+    private final JARSource jarSource;
+    protected Map<Plugin, Boolean> allPlugins = new HashMap<>();
     private boolean doRestart = true;
 
     public PluginManager() {
-        String proxyHost = System.getProperty("http.proxyHost", "");
-        if (!proxyHost.isEmpty()) {
-            int proxyPort = Integer.parseInt(System.getProperty("http.proxyPort", "-1"));
-            HttpParams params = httpClient.getParams();
-            HttpHost proxy = new HttpHost(proxyHost, proxyPort);
-            params.setParameter(ConnRoutePNames.DEFAULT_PROXY, proxy);
+        String sysProp = System.getProperty("jpgc.repo.address", "https://jmeter-plugins.org/repo/");
+        String jmProp = JMeterUtils.getPropDefault("jpgc.repo.address", sysProp);
+        File jsonFile = new File(jmProp);
+        if (jsonFile.isFile()) {
+            jarSource = new JARSourceFilesystem(jsonFile);
+        } else {
+            jarSource = new JARSourceHTTP(jmProp);
         }
     }
 
-    public void load() throws IOException {
+    public void load() throws Throwable {
         if (allPlugins.size() > 0) {
             return;
         }
 
-        JSON json = getJSON("/repo/?installID=" + getInstallID());
+        JSON json = jarSource.getRepo();
+
         if (!(json instanceof JSONArray)) {
             throw new RuntimeException("Result is not array");
         }
@@ -78,42 +69,38 @@ public class PluginManager {
             }
         }
 
-        log.info("Plugins Status: " + getAllPluginsStatusString());
-
         if (JMeterUtils.getPropDefault("jpgc.repo.sendstats", "true").equals("true")) {
             try {
-                reportStats();
+                jarSource.reportStats(getUsageStats());
             } catch (Exception e) {
                 log.debug("Failed to report usage stats", e);
             }
         }
+
+        log.info("Plugins Status: " + getAllPluginsStatusString());
     }
 
-    protected JSON getJSON(String path) throws IOException {
-        String uri = address + path;
-        log.debug("Requesting " + uri);
-
-        HttpRequestBase get = new HttpGet(uri);
-        HttpParams requestParams = get.getParams();
-        requestParams.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, timeout);
-        requestParams.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, timeout);
-
-        HttpResponse result = httpClient.execute(get);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        result.getEntity().writeTo(bos);
-        byte[] bytes = bos.toByteArray();
-        if (bytes == null) {
-            bytes = "null".getBytes();
+    private void checkRW() throws UnsupportedEncodingException, AccessDeniedException {
+        String jarPath = Plugin.getJARPath(JMeterEngine.class.getCanonicalName());
+        if (jarPath != null) {
+            File libext = new File(URLDecoder.decode(jarPath, "UTF-8")).getParentFile();
+            if (!isWritable(libext)) {
+                String msg = "Have no write access for JMeter directories, not possible to use Plugins Manager: ";
+                throw new AccessDeniedException(msg + libext);
+            }
         }
-        String response = new String(bytes);
-        int statusCode = result.getStatusLine().getStatusCode();
-        if (statusCode >= 300) {
-            log.warn("Response with code " + result + ": " + response);
-            throw new IOException("Repository responded with wrong status code: " + statusCode);
-        } else {
-            log.debug("Response with code " + result + ": " + response);
+    }
+
+    private boolean isWritable(File path) {
+        File sample = new File(path, "empty.txt");
+        try {
+            sample.createNewFile();
+            sample.delete();
+            return true;
+        } catch (IOException e) {
+            log.debug("Write check failed for " + path, e);
+            return false;
         }
-        return JSONSerializer.toJSON(response, new JsonConfig());
     }
 
     public void startModifications(Set<Plugin> delPlugins, Set<Plugin> installPlugins, Map<String, String> installLibs, Set<String> libDeletions) throws IOException {
@@ -132,16 +119,21 @@ public class PluginManager {
     }
 
     public void applyChanges(GenericCallback<String> statusChanged) {
+        try {
+            checkRW();
+        } catch (Throwable e) {
+            throw new RuntimeException("Cannot apply changes: " + e.getMessage(), e);
+        }
+
         DependencyResolver resolver = new DependencyResolver(allPlugins);
         Set<Plugin> additions = resolver.getAdditions();
         Map<String, String> libInstalls = new HashMap<>();
 
         for (Map.Entry<String, String> entry : resolver.getLibAdditions().entrySet()) {
-            Downloader dwn = new Downloader(statusChanged);
             try {
-                String tmpFile = dwn.download(entry.getKey(), new URI(entry.getValue()));
-                libInstalls.put(tmpFile, dwn.getFilename());
-            } catch (Exception e) {
+                JARSource.DownloadResult dwn = jarSource.getJAR(entry.getKey(), entry.getValue(), statusChanged);
+                libInstalls.put(dwn.getTmpFile(), dwn.getFilename());
+            } catch (Throwable e) {
                 String msg = "Failed to download " + entry.getKey();
                 log.error(msg, e);
                 statusChanged.notify(msg);
@@ -151,7 +143,7 @@ public class PluginManager {
 
         for (Plugin plugin : additions) {
             try {
-                plugin.download(statusChanged);
+                plugin.download(jarSource, statusChanged);
             } catch (IOException e) {
                 String msg = "Failed to download " + plugin;
                 log.error(msg, e);
@@ -183,29 +175,15 @@ public class PluginManager {
         });
     }
 
-    private void reportStats() throws IOException {
-        String uri = address + "/repo/";
-        HttpPost post = new HttpPost(uri);
-        HttpEntity body = new StringEntity("stats=" + URLEncoder.encode(getUsageStats(), "UTF-8"));
-        post.setEntity(body);
-        HttpParams requestParams = post.getParams();
-        requestParams.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, 3000);
-        requestParams.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 1000);
-
-        log.debug("Requesting " + uri);
-        httpClient.execute(post);
-    }
-
-    protected String getUsageStats() {
+    protected String[] getUsageStats() {
         ArrayList<String> data = new ArrayList<>();
-        data.add(getInstallID());
         data.add(JMeterUtils.getJMeterVersion());
 
         for (Plugin p : getInstalledPlugins()) {
             data.add(p.getID() + "=" + p.getInstalledVersion());
         }
         log.debug("Usage stats: " + data);
-        return Arrays.toString(data.toArray(new String[0]));
+        return data.toArray(new String[0]);
     }
 
     public String getChangesAsText() {
@@ -300,34 +278,8 @@ public class PluginManager {
         }
     }
 
-    /**
-     * This function makes sure anonymous identifier sent
-     *
-     * @return unique ID for installation
-     */
-    public String getInstallID() {
-        String str = "";
-        str += getClass().getProtectionDomain().getCodeSource().getLocation().getFile();
-        try {
-            str += "\t" + InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            log.warn("Cannot get local host name", e);
-        }
-
-        try {
-            Enumeration<NetworkInterface> ifs = NetworkInterface.getNetworkInterfaces();
-            for (NetworkInterface netint : Collections.list(ifs)) {
-                str += "\t" + Arrays.toString(netint.getHardwareAddress());
-            }
-        } catch (SocketException e) {
-            log.warn("Failed to get network addresses", e);
-        }
-
-        return DigestUtils.md5Hex(str);
-    }
-
     public void setTimeout(int timeout) {
-        this.timeout = timeout;
+        jarSource.setTimeout(timeout);
     }
 
     /**
@@ -336,8 +288,8 @@ public class PluginManager {
     public static PluginManager getStaticManager() {
         try {
             staticManager.load();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to get plugin repositories");
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to get plugin repositories", e);
         }
         return staticManager;
     }
