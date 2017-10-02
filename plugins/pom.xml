@@ -31,7 +31,6 @@
         <module>ffw</module>
         <module>fifo</module>
         <module>functions</module>
-        <module>hadoop</module>
         <module>httpraw</module>
         <module>jms</module>
         <module>jmxmon</module>
@@ -41,12 +40,9 @@
         <module>perfmon</module>
         <module>prmctl</module>
         <module>redis</module>
-        <module>sense-uploader</module>
         <module>tst</module>
         <module>udp</module>
         <module>webdriver</module>
-        <module>wsc</module>
         <module>xml</module>
-        <module>xmpp</module>
     </modules>
 </project>

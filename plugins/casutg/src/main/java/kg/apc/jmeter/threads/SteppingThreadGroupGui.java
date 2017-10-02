@@ -21,6 +21,7 @@ import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Deprecated
 public class SteppingThreadGroupGui
         extends AbstractThreadGroupGui {
 
@@ -197,7 +198,7 @@ public class SteppingThreadGroupGui
 
     @Override
     public String getStaticLabel() {
-        return JMeterPluginsUtils.prefixLabel("Stepping Thread Group");
+        return JMeterPluginsUtils.prefixLabel("Stepping Thread Group (deprecated)");
     }
 
     @Override
