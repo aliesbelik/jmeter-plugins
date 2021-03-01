@@ -8,6 +8,7 @@
  */
 package com.atlantbh.jmeter.plugins.jsonutils.jsonpathassertion;
 
+import com.atlantbh.jmeter.plugins.jsonutils.YAMLToJSONConverter;
 import com.atlantbh.jmeter.plugins.jsonutils.jsonpathextractor.JSONPathExtractor;
 import com.jayway.jsonpath.JsonPath;
 import net.minidev.json.JSONArray;
@@ -16,8 +17,8 @@ import org.apache.jmeter.assertions.AssertionResult;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.testelement.AbstractTestElement;
 import org.apache.jmeter.util.JMeterUtils;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.oro.text.regex.Pattern;
 
 import java.io.Serializable;
@@ -27,14 +28,25 @@ import java.io.Serializable;
  * previous sample result using JSON path expression
  */
 public class JSONPathAssertion extends AbstractTestElement implements Serializable, Assertion {
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(JSONPathAssertion.class);
     private static final long serialVersionUID = 1L;
+    public static final String INPUT_JSON = "JSON";
+    public static final String INPUT_YAML = "YAML";
+    public static final String INPUT_FORMAT = "INPUT_FORMAT";
     public static final String JSONPATH = "JSON_PATH";
     public static final String EXPECTEDVALUE = "EXPECTED_VALUE";
     public static final String JSONVALIDATION = "JSONVALIDATION";
     public static final String EXPECT_NULL = "EXPECT_NULL";
     public static final String INVERT = "INVERT";
     public static final String ISREGEX = "ISREGEX";
+
+    public void setInputFormat(String inputFormat) {
+        setProperty(INPUT_FORMAT, inputFormat);
+    }
+
+    public String getInputFormat() {
+        return getPropertyAsString(INPUT_FORMAT);
+    }
 
     public String getJsonPath() {
         return getPropertyAsString(JSONPATH);
@@ -85,6 +97,10 @@ public class JSONPathAssertion extends AbstractTestElement implements Serializab
     }
 
     private void doAssert(String jsonString) {
+        if (INPUT_YAML.equals(getInputFormat())) {
+            jsonString = YAMLToJSONConverter.convert(jsonString);
+        }
+
         Object value = JsonPath.read(jsonString, getJsonPath());
 
         if (isJsonValidationBool()) {

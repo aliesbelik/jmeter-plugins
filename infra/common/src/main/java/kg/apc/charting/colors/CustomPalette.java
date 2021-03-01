@@ -1,8 +1,8 @@
 package kg.apc.charting.colors;
 
 import kg.apc.charting.ColorsDispatcher;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -10,21 +10,24 @@ import java.util.List;
 
 /**
  * Custom Color Palette
- *
+ * <p>
  * Define custom palette by setting the following in jmeter.properties or user.properties:
+ * <ul>
  * <li><code>jmeterPlugin.customColorsDispatcher = custompalette</code></li>
  * <li><code>jmeterPlugin.customColorsDispatcher.options = 112233,aabbff</code></li>
- *
+ * </ul>
+ * <p>
  * Where options are a comma separated list of color hex values
  */
 public class CustomPalette implements ColorsDispatcher {
     List<Color> customPalette = new ArrayList<Color>(16);
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(CustomPalette.class);
 
     int i = 0;
 
     /**
      * Implements ColorDispatcher using user supplied custom palette list
+     *
      * @param options comma delimited list of colors in hex, e.g. 112233,aa00ff
      */
     public CustomPalette(String options) {
@@ -82,7 +85,7 @@ public class CustomPalette implements ColorsDispatcher {
 
     @Override
     public Color getNextColor() {
-        if (i+1 > customPalette.size()) {
+        if (i + 1 > customPalette.size()) {
             reset();
             return getNextColor();
         } else {

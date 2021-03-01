@@ -24,7 +24,7 @@ body {
 }
 
 .site-header .sponsorship {
-    margin-top: 0.5em;
+    margin-top: 0.25em;
 }
 
 nav.navbar-default {
@@ -78,48 +78,6 @@ footer .container {
     border-top: 2px solid #ccc;
     font-size: smaller;
     color: gray;
-}
-
-/* Plugin Sets */
-.plugins_set {
-    border-radius: 1em;
-    padding: 1em;
-    border: 1px solid;
-    vertical-align: top;
-}
-
-.plugins_set h3, .plugins_set h2 {
-    margin-top: 0;
-}
-
-.standard_set {
-    background-color: #DDF;
-    border-color: #AAD;
-}
-
-.extras_set {
-    background-color: #DFD;
-    border-color: #ADA;
-}
-
-.extraslibs_set {
-    background-color: #FDD;
-    border-color: #DAA;
-}
-
-.webdriver_set {
-    background-color: #FDF;
-    border-color: #DAD;
-}
-
-.hadoop_set {
-    background-color: #DDD;
-    border-color: #AAA;
-}
-
-.xmpp_set {
-    background-color: #FFD;
-    border-color: #DDA;
 }
 
 /* Downloads */
@@ -283,8 +241,8 @@ table.wiki img {
 }
 
 .jqstooltip {
-    padding: 0!important;
-    border: none!important;
+    padding: 0 !important;
+    border: none !important;
 }
 
 .jqsfield > span {

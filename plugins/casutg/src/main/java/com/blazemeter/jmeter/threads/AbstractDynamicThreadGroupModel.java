@@ -1,22 +1,25 @@
 package com.blazemeter.jmeter.threads;
 
-import com.blazemeter.jmeter.reporters.FlushingResultCollector;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.jmeter.reporters.ResultCollector;
 import org.apache.jmeter.samplers.SampleEvent;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.testelement.TestStateListener;
 import org.apache.jmeter.threads.AbstractThreadGroup;
 import org.apache.jmeter.util.JMeterUtils;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import com.blazemeter.jmeter.reporters.FlushingResultCollector;
 
 // reason to have this class as separate is will to keep Model responsibility separate
 public abstract class AbstractDynamicThreadGroupModel extends AbstractThreadGroup implements TestStateListener {
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(AbstractDynamicThreadGroupModel.class);
     protected static final long WAIT_TO_DIE = JMeterUtils.getPropDefault("jmeterengine.threadstop.wait", 5 * 1000);
     public static final String LOG_FILENAME = "LogFilename";
     public static final String TARGET_LEVEL = "TargetLevel";
@@ -24,7 +27,7 @@ public abstract class AbstractDynamicThreadGroupModel extends AbstractThreadGrou
     public static final String STEPS = "Steps";
     public static final String ITERATIONS = "Iterations";
     public static final String HOLD = "Hold";
-    protected final Set<DynamicThread> threads = Collections.newSetFromMap(new ConcurrentHashMap<DynamicThread, Boolean>());
+    protected transient Set<DynamicThread> threads = Collections.newSetFromMap(new ConcurrentHashMap<DynamicThread, Boolean>());
     protected final ResultCollector logFile = new FlushingResultCollector();
     protected volatile boolean running = false;
 
@@ -172,5 +175,15 @@ public abstract class AbstractDynamicThreadGroupModel extends AbstractThreadGrou
 
     public void setIterationsLimit(String val) {
         setProperty(ITERATIONS, val);
+    }
+
+    private void readObject(ObjectInputStream in)
+            throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        threads = Collections.newSetFromMap(new ConcurrentHashMap<DynamicThread, Boolean>());
+    }
+
+    public boolean isRunning() {
+        return running;
     }
 }

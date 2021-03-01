@@ -1,6 +1,5 @@
 package com.blazemeter.jmeter.threads.arrivals;
 
-import com.blazemeter.jmeter.control.VirtualUserController;
 import com.blazemeter.jmeter.threads.AbstractDynamicThreadGroup;
 import com.blazemeter.jmeter.threads.DynamicThread;
 import org.apache.jmeter.engine.StandardJMeterEngine;
@@ -9,8 +8,8 @@ import org.apache.jmeter.threads.JMeterThread;
 import org.apache.jmeter.threads.ListenerNotifier;
 import org.apache.jmeter.threads.ThreadCountsAccessor;
 import org.apache.jorphan.collections.ListedHashTree;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.Set;
@@ -20,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ArrivalsThreadGroup extends AbstractDynamicThreadGroup {
     public static final String CONCURRENCY_LIMIT = "ConcurrencyLimit";
     public static final String ARRIVALS_LIMIT = "ArrivalsLimit";
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(ArrivalsThreadGroup.class);
     protected final AtomicLong arrivalsCount = new AtomicLong();
     protected final AtomicLong completionsCount = new AtomicLong();
     protected AtomicLong abandonsCount = new AtomicLong();
@@ -52,11 +51,6 @@ public class ArrivalsThreadGroup extends AbstractDynamicThreadGroup {
     @Override
     protected Thread getThreadStarter(int groupIndex, ListenerNotifier listenerNotifier, ListedHashTree testTree, StandardJMeterEngine engine) {
         return new ArrivalsThreadStarter(groupIndex, listenerNotifier, testTree, engine, this);
-    }
-
-    @Override
-    public void startNextLoop() {
-        ((VirtualUserController) getSamplerController()).startNextLoop();
     }
 
     /**

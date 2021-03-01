@@ -4,34 +4,24 @@ import java.text.SimpleDateFormat;
 import java.util.TimeZone;
 
 import org.apache.jorphan.gui.NumberRenderer;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public class DateTimeRenderer
         extends NumberRenderer {
 
-    /**
-     *
-     */
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(DateTimeRenderer.class);
     protected final SimpleDateFormat dateFormatter;
     private long relativeStartTime = 0;
     private static final String EMPTY = "";
     public static final String HHMMSS = "HH:mm:ss";
 
-    /**
-     *
-     */
     public DateTimeRenderer() {
         super();
         dateFormatter = (SimpleDateFormat) SimpleDateFormat.getInstance();
         //log.info("Simple inst");
     }
 
-    /**
-     *
-     * @param format
-     */
     public DateTimeRenderer(String format) {
         super();
         dateFormatter = new SimpleDateFormat(format);
@@ -40,7 +30,8 @@ public class DateTimeRenderer
 
     /**
      * Creates new instance
-     * @param format - date/time format
+     *
+     * @param format             - date/time format
      * @param aRelativeStartTime - test start time
      */
     public DateTimeRenderer(String format, long aRelativeStartTime) {
@@ -57,15 +48,16 @@ public class DateTimeRenderer
             setText(EMPTY);
         } else {
             if (value instanceof Double) {
-                value=Math.round((Double) value);
+                value = Math.round((Double) value);
             }
-                setLongValue((Long) value);
+            setLongValue((Long) value);
         }
     }
 
     /**
      * Sets value to render
-     * @param value
+     *
+     * @param value to set
      */
     private void setLongValue(Long value) {
         setText(dateFormatter.format(value - relativeStartTime));

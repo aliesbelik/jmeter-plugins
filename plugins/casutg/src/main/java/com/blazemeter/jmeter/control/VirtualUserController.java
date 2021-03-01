@@ -9,23 +9,19 @@ import org.apache.jmeter.control.NextIsNullException;
 import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.threads.JMeterThread;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public class VirtualUserController extends GenericController {
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(VirtualUserController.class);
     private boolean hasArrived = false;
     protected AbstractDynamicThreadGroup owner;
-
-    public VirtualUserController() {
-        super();
-    }
 
     private long iterationNo = 0;
 
     @Override
     public Sampler next() {
-        if (!owner.isRunning()) {
+        if (owner.isLimitReached()) {
             setDone(true);
         } else if (!hasArrived) {
             if (owner.isLimitReached()) {
@@ -35,6 +31,10 @@ public class VirtualUserController extends GenericController {
             iterationNo++;
             if (owner instanceof ArrivalsThreadGroup) {
                 getOwnerAsArrivals().arrivalFact(JMeterContextService.getContext().getThread(), iterationNo);
+                if (!owner.isRunning()) {
+                    setDone(true);
+                    return null;
+                }
             }
         }
 
@@ -95,9 +95,12 @@ public class VirtualUserController extends GenericController {
         JMeterThread thread = JMeterContextService.getContext().getThread();
         if (owner instanceof ArrivalsThreadGroup) {
             getOwnerAsArrivals().abandonFact(thread, iterationNo);
-        }
-        if (!moveToPool(thread)) {
-            setDone(true);
+
+            if (!moveToPool(thread)) {
+                setDone(true);
+            }
+        } else {
+            reInitialize();
         }
     }
 

@@ -29,8 +29,8 @@ import org.apache.jmeter.testelement.property.CollectionProperty;
 import org.apache.jmeter.testelement.property.JMeterProperty;
 import org.apache.jmeter.testelement.property.NullProperty;
 import org.apache.jmeter.timers.gui.AbstractTimerGui;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public class VariableThroughputTimerGui
         extends AbstractTimerGui
@@ -38,7 +38,7 @@ public class VariableThroughputTimerGui
         CellEditorListener {
 
     public static final String WIKIPAGE = "ThroughputShapingTimer";
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(VariableThroughputTimerGui.class);
     /**
      *
      */
@@ -188,18 +188,18 @@ public class VariableThroughputTimerGui
 
         int rowsCount = tableModel.getRowCount();
         row.add(now, 0);
-        row.add(now, tg.getRPSForSecond(0));
+        row.add(now, tg.getRPSForSecond(0).getLeft());
 
         int duration = 0;
         for (int i = 0; i < rowsCount; i++) {
-            row.add(now + (duration + 1) * 1000, tg.getRPSForSecond(duration + 1));
+            row.add(now + (duration + 1) * 1000, tg.getRPSForSecond(duration + 1).getLeft());
             int rowVal = getIntFromRow(i, 2);
             if (rowVal < 0) {
                 chart.setErrorMessage("The values entered cannot be rendered in preview...");
                 break;
             }
             duration = duration + rowVal;
-            row.add(now + duration * 1000, tg.getRPSForSecond(duration));
+            row.add(now + duration * 1000, tg.getRPSForSecond(duration).getLeft());
         }
 
         chart.setxAxisLabelRenderer(new DateTimeRenderer(DateTimeRenderer.HHMMSS, now - 1)); //-1 because row.add(thread.getStartTime() - 1, 0)

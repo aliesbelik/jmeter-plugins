@@ -6,14 +6,14 @@ import org.apache.jmeter.testelement.property.TestElementProperty;
 import org.apache.jmeter.threads.JMeterThread;
 import org.apache.jmeter.threads.ListenerNotifier;
 import org.apache.jorphan.collections.ListedHashTree;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.util.Set;
 
 // adding some basic methods to our Model
 public abstract class AbstractDynamicThreadGroup extends AbstractDynamicThreadGroupModel {
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(AbstractDynamicThreadGroup.class);
     public static final String UNIT = "Unit";
     public static final String UNIT_MINUTES = "M";
     public static final String UNIT_SECONDS = "S";
@@ -36,7 +36,9 @@ public abstract class AbstractDynamicThreadGroup extends AbstractDynamicThreadGr
 
     @Override
     public void threadFinished(JMeterThread jMeterThread) {
-        log.debug("threadFinished: " + jMeterThread.getThreadName());
+        if(log.isDebugEnabled()) {
+            log.debug("threadFinished: " + jMeterThread.getThreadName());
+        }
         if (jMeterThread instanceof DynamicThread) {
             threads.remove(jMeterThread);
         }
@@ -123,7 +125,7 @@ public abstract class AbstractDynamicThreadGroup extends AbstractDynamicThreadGr
     }
 
     protected void joinThreadFrom(Set<DynamicThread> threadSet) {
-        DynamicThread[] threads = threadSet.toArray(new DynamicThread[threadSet.size()]);
+        DynamicThread[] threads = threadSet.toArray(new DynamicThread[0]);
         if (threads.length > 0 && threads[0] != null) {
             DynamicThread thread = threads[0];
             log.debug("Joining thread " + thread.getThreadName());
@@ -172,4 +174,8 @@ public abstract class AbstractDynamicThreadGroup extends AbstractDynamicThreadGr
         return getUnitStr(unit);
     }
 
+    @Override
+    public void startNextLoop() {
+        ((VirtualUserController) getSamplerController()).startNextLoop();
+    }
 }

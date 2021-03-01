@@ -3,10 +3,12 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import zipfile
 from distutils.version import StrictVersion
 
+import jsonschema
 import requests
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,6 +20,12 @@ def is_version_packed(fname):
     resp = requests.head("https://jmeter-plugins.org/files/packages/%s" % fname)
     resp.close()
     return resp.status_code == 200
+
+
+def get_packages():
+    resp = requests.get("http://jmeter-plugins.org/files/packages/")
+    assert resp.status_code == 200
+    return {x['file']: x['size'] for x in json.loads(resp.content)['files']}
 
 
 def pack_version(fname, ver_obj, pmgr_obj, installer_cls):
@@ -55,10 +63,13 @@ def zip_dir(path, ziph):
 
 def download_into_dir(dirname, url, dest_subpath):
     logging.info("Downloading: %s", url)
+    logging.debug("Dest dir: %s / subpath: %s", dirname, dest_subpath)
     resp = requests.get(url)
     assert resp.status_code == 200
     if 'content-disposition' in resp.headers:
-        remote_filename = re.findall("filename=(.+)", resp.headers['content-disposition'])[0]
+        # handle optional quotes around filename:
+        remote_filename = re.sub('.*filename=(")?(?P<filename>.+)(?(1)"|$).*', "\g<filename>",
+                                 resp.headers['content-disposition'])
     else:
         remote_filename = os.path.basename(resp.url)
 
@@ -66,7 +77,7 @@ def download_into_dir(dirname, url, dest_subpath):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
-    with open(os.path.join(dirname, dest_subpath, remote_filename), 'w') as fname:
+    with open(os.path.join(dirname, dest_subpath, remote_filename), 'wb') as fname:
         fname.write(resp.content)
         fname.close()
     resp.close()
@@ -83,22 +94,36 @@ def get_pmgr(plugins_list):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG, format="%(relativeCreated)d\t%(levelname)s\t%(message)s")
 
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
+    with open("repo_schema.json") as fhd:
+        schema = json.load(fhd)
+
     plugins = []
     for repo_file in os.listdir(repo_dir):
         with open(os.path.join(repo_dir, repo_file)) as fhd:
-            plugins.extend(json.loads(fhd.read()))
+            content = json.loads(fhd.read())
+            jsonschema.validate(content, schema)
+            plugins.extend(content)
+
+    if len(sys.argv) > 1:
+        logging.info("Doing no downloads, just checked JSON validity")
+        sys.exit(0)
+
+    known_packages = get_packages()
 
     # find pmgr
     pmgr_obj = get_pmgr(plugins)
     download_into_dir(tempfile.mkdtemp(), pmgr_obj['downloadUrl'], "pmgr")  # TODO: use it as cached
 
-    for plugin in plugins:
-        logging.debug("Processing plugin: %s", plugin['id'])
+    for n, plugin in enumerate(plugins):
+        if 'screenshotUrl' not in plugin:
+            raise ValueError("%s has no screenshotUrl" % plugin['id'])
+
+        logging.debug("Processing plugin %d of %d: %s", n, len(plugins), plugin['id'])
         if plugin['id'] == 'jpgc-plugins-manager':
             continue
 
@@ -106,9 +131,13 @@ if __name__ == "__main__":
             logging.debug("Version: %s", version)
             if not version:
                 continue
+
+            if not plugin['versions'][version]['downloadUrl']:
+                continue
+
             dest_file = "%s-%s.zip" % (plugin['id'], version)
-            if is_version_packed(dest_file):
-                logging.info("Skip: %s", plugin['id'])
+            if known_packages.get(dest_file) or is_version_packed(dest_file):
+                logging.info("Skip: %s %s", plugin['id'], version)
                 continue
 
             pack_version(os.path.join(dest_dir, dest_file), plugin['versions'][version], pmgr_obj,

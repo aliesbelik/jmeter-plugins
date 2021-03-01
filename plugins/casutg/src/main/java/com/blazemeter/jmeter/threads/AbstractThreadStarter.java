@@ -1,19 +1,21 @@
 package com.blazemeter.jmeter.threads;
 
 import com.blazemeter.jmeter.control.VirtualUserController;
+import kg.apc.jmeter.threads.AbstractSimpleThreadGroup;
 import org.apache.jmeter.control.Controller;
 import org.apache.jmeter.engine.StandardJMeterEngine;
 import org.apache.jmeter.engine.TreeCloner;
 import org.apache.jmeter.threads.JMeterContext;
 import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.threads.ListenerNotifier;
+import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jorphan.collections.HashTree;
 import org.apache.jorphan.collections.ListedHashTree;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public abstract class AbstractThreadStarter extends Thread {
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(AbstractThreadStarter.class);
     protected final ListenerNotifier notifier;
     protected final ListedHashTree threadGroupTree;
     protected final StandardJMeterEngine engine;
@@ -39,14 +41,18 @@ public abstract class AbstractThreadStarter extends Thread {
     @Override
     public void run() {
         try {
+            // Copy in ThreadStarter thread context from calling Thread
+            JMeterContextService.getContext().setVariables(this.context.getVariables());
             supplyActiveThreads();
         } catch (InterruptedException e) {
             log.debug("Interrupted", e);
+            // "InterruptedException" should not be ignored (squid:S2142)
+            Thread.currentThread().interrupt();
         }
         log.debug("Thread starter has done its job");
     }
 
-    abstract protected void supplyActiveThreads() throws InterruptedException;
+    protected abstract void supplyActiveThreads() throws InterruptedException;
 
     protected DynamicThread makeThread(long threadIndex) {
         boolean onErrorStopTest = owner.getOnErrorStopTest();
@@ -57,7 +63,9 @@ public abstract class AbstractThreadStarter extends Thread {
         jmeterThread.setThreadNum((int) threadIndex);
         jmeterThread.setThreadGroup(this.owner);
         jmeterThread.setInitialContext(context);
-        final String threadName = owner.getName() + " " + groupIndex + "-" + (threadIndex + 1);
+        String groupName = getName();
+        String distributedPrefix = JMeterUtils.getPropDefault(AbstractSimpleThreadGroup.THREAD_GROUP_DISTRIBUTED_PREFIX_PROPERTY_NAME, "");
+        final String threadName = distributedPrefix + (distributedPrefix.isEmpty() ? "" : "-") + groupName + " " + groupIndex + "-" + (threadIndex + 1);
         jmeterThread.setThreadName(threadName);
         jmeterThread.setEngine(engine);
         jmeterThread.setOnErrorStopTest(onErrorStopTest);

@@ -8,15 +8,15 @@ import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.samplers.Sampler;
 import org.apache.jmeter.testelement.TestStateListener;
 import org.apache.jmeter.util.JMeterUtils;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
 public class TSTFeedback extends AbstractFunction implements TestStateListener {
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(TSTFeedback.class);
 
     private static final List<String> desc = new LinkedList<>();
     private static final String KEY = "__tstFeedback";
@@ -35,8 +35,7 @@ public class TSTFeedback extends AbstractFunction implements TestStateListener {
     private boolean justStarted = true;
 
     @Override
-    public synchronized String execute(SampleResult previousResult, Sampler currentSampler)
-            throws InvalidVariableException {
+    public synchronized String execute(SampleResult previousResult, Sampler currentSampler) {
         String tstName = values[0].execute();
         String concName = tstName + "_concurrency";
 
@@ -75,13 +74,20 @@ public class TSTFeedback extends AbstractFunction implements TestStateListener {
             needed = decreaseNeeded(spare, con, delayed, needed);
         } else if (sent < rps) {
             needed = (int) Math.ceil(con * (2 - sent / rps));
-            if (needed > limit) {
-                needed = limit;
-            }
         }
 
         if (needed != con && log.isDebugEnabled()) {
             log.debug("Need to change " + concName + ": " + con + "=>" + needed + " (" + sent + "/" + rps + "/" + delayed + ")");
+        }
+
+        if (needed <= 0) {
+            log.warn("Got concurrency less than zero: " + needed);
+            needed = 1;
+        }
+
+        if (needed > limit) {
+            log.warn("Got concurrency more than limit: " + needed);
+            needed = limit;
         }
 
         JMeterUtils.setProperty(concName, String.valueOf(needed));
@@ -91,14 +97,16 @@ public class TSTFeedback extends AbstractFunction implements TestStateListener {
 
     private int decreaseNeeded(double spare, int con, int delayed, int needed) {
         if (spare >= 1) { // absolute count
-            if (delayed > spare) {
-                needed -= delayed - spare;
+            needed -= delayed - spare;
+            if (con > spare) {
+                return (int) Math.max(spare, needed);
             }
         } else {
             if (delayed > Math.ceil(con * spare)) {
                 needed = (int) (con * (1 - spare));
             }
         }
+
         return needed;
     }
 

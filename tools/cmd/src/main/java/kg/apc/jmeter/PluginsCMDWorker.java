@@ -5,8 +5,8 @@ import kg.apc.charting.GraphPanelChart;
 import kg.apc.cmd.UniversalRunner;
 import kg.apc.jmeter.graphs.AbstractGraphPanelVisualizer;
 import kg.apc.jmeter.vizualizers.CorrectedResultCollector;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,7 +26,7 @@ public class PluginsCMDWorker {
     private String outputCSV;
     private String outputPNG;
     private AbstractGraphPanelVisualizer pluginType;
-    private static final Logger log = LoggingManager.getLoggerForClass();
+    private static final Logger log = LoggerFactory.getLogger(PluginsCMDWorker.class);
     private int aggregate = -1;
     private int zeroing = -1;
     private int preventOutliers = -1;
@@ -46,6 +46,7 @@ public class PluginsCMDWorker {
     private int excludeSamplesWithRegex = -1;
     private int successFilter = -1;
     private int markers = -1;
+    private String yAxisLabel="Performance Metrics";
 
     public PluginsCMDWorker() {
         log.info("Using JMeterPluginsCMD v. " + JMeterPluginsUtils.getVersion());
@@ -100,6 +101,13 @@ public class PluginsCMDWorker {
         graphHeight = i;
     }
 
+
+    public void setYAxisLabel(String yAxisLabel) {
+        if(yAxisLabel != null) {
+            this.yAxisLabel = yAxisLabel;
+        }
+    }
+
     public int doJob() {
         checkParams();
 
@@ -141,6 +149,8 @@ public class PluginsCMDWorker {
 
         // to handle issue 64 and since it must be cheap - set options again
         setOptions(pluginInstance);
+
+        pluginInstance.getGraphPanelChart().setYAxisLabel(yAxisLabel);
 
         if ((exportMode & EXPORT_PNG) == EXPORT_PNG) {
             File pngFile = new File(outputPNG);
